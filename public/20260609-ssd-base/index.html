@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src-attr 'unsafe-inline'">
+
+    <title>Self-distillation on math: baselines | FLF.dev</title>
+
+    <link rel="preload" href="https://flf.dev/fonts/lmsans10-regular.otf" as="font" type="font/otf" crossorigin="anonymous">
+    <link rel="preload" href="https://flf.dev/fonts/lmsans10-bold.otf" as="font" type="font/otf" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://flf.dev/css/style.css?h=bb65676d7e8c5e6117e5">
+    <script src="https://flf.dev/js/auto-close-popover-on-resize.js?h=4ef87d6fc7b98b22e044" defer></script>
+    <script src="https://flf.dev/js/copy-code-to-clipboard.js?h=6eec6d5a29e934c1de32" defer></script>
+    <link rel="stylesheet" href="https://flf.dev/css/katex.min.css?h=4f5ceb5bd43fff5d4658">
+    <script src="https://flf.dev/js/katex.min.js?h=886d4a4a468f094660b0" defer></script>
+
+    <link rel="canonical" href="https://flf.dev/20260609-ssd-base/">
+    
+    <meta name="description" content="Initial baselines for simple self-distillation on competitive math.">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#211f1a">
+    <meta name="color-scheme" content="dark">
+
+    <meta property="og:title" content="Self-distillation on math: baselines">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://flf.dev/20260609-ssd-base/">
+    <meta property="og:description" content="Initial baselines for simple self-distillation on competitive math.">
+    <meta property="og:site_name" content="FLF.dev">
+    <meta property="og:updated_time" content="2026-06-16T00:06:14.193177+02:00">
+    <meta property="article:published_time" content="2026-06-09T00:00:00+00:00">
+    <meta name="twitter:label2" content="Reading time">
+    <meta name="twitter:data2" content="4 min">
+</head>
+
+<body class="layout-center" data-theme="oled-abyss">
+    <header class="header">
+        <div class="header-container">
+            <span class="header-logo-container">
+                <a href="https://flf.dev">
+                    <span class="logo">FLF.dev</span>
+                </a>
+            </span>
+        </div>
+        <nav class="main-menu" aria-label="Main Menu">
+            <a class="skip-to-content" href="#main">Skip to main content</a>
+            <button class="main-menu-dropdown-button" popovertarget="nav-menu">Menu</button>
+            <ul id="nav-menu" class="main-menu-items" aria-label="Site Navigation" popover>
+                <li><a href="https://flf.dev/">Home</a></li>
+                <li><a href="https://flf.dev/archive/">Archive</a></li>
+                <li><a href="https://flf.dev/about/">About</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main id="main">
+        <article class="post content">
+            <header>
+                <h1 class="post-title">
+                    <a href="https://flf.dev/20260609-ssd-base/">Self-distillation on math: baselines</a>
+                </h1>
+                <ul class="post-meta hidden">
+                    <li title="Published on 2026-06-09"><time datetime="2026-06-09">2026.06.09</time></li>
+                </ul>
+            </header>
+
+<p><a href="https://flf.dev/20260609-ssd-base/20260605_ssd_data.md">Last time</a> we talked about the data we're going to use to evaluate our Qwen3.5-4B model on competitive math. Now that we have this, we can get into baselines.</p>
+<h2 id="a-note-on-the-validation-set">A note on the validation set</h2>
+<p>Before we get started though, I have to call out one issue on the validation data. Recall that we are building a ~1k validation set from various sources; these sources have different difficulty and contamination levels. Further, the 1k set is really only needed for fine evals and to detect smaller effects; for comparing checkpoints within a single run and ablations where we want to see a directional signal, 300 prompts is enough. The problem is that when you combine both of these facts, you can't interpret a 300-row eval the same way you would interpret a 1k-row eval: the 300-row set is harder, so your partial accuracy will be worse. I only realized this quite some time after running several experiments, which is a bit annoying because we're stuck with this now. This explains why below I report 300-budget and 1k-budget accuracies, and why they are so different.</p>
+<h2 id="metrics">Metrics</h2>
+<p>Beyond simple accuracy, there are a couple of additional metrics to care about. In particular in training they can be useful to understand if we are making progress or not. They center around how well the model follows the instructions and emits an answer. Qwen3.5-4B is not explicitly mentioned as falling into thinking loops like its smaller cousins 2B and 0.8B, but it can nevertheless think for such a long time that it hits the generation cap. Therefore, it's useful to track the following:</p>
+<ul>
+<li>Think-close rate: how often did the model stop thinking and start producing some kind of response.</li>
+<li>Boxed-answer rate: how often did the model produce some kind of extractable answer in <code>\boxed{}</code> (as instructed)</li>
+<li>Length-stop rate: how often did the model run up to the generation cap.</li>
+</ul>
+<p>Note that these metrics also depend on the generation cap. When I started the project, I tried values around 16k and 32k, but these were too short: I ended up with a set of responses that was either correct, or cut off. At 48k, the length-stop rate is still high at around 12%, but we do start seeing cases where the model finishes naturally and produces an extractable wrong answer.</p>
+<h2 id="baseline-definitions">Baseline definitions</h2>
+<p>Now that we explained what we're measuring, it's time to define what datapoints we're interested in collecting.</p>
+<h3 id="named-baselines">Named baselines</h3>
+<p>The <a rel="external" href="https://huggingface.co/Qwen/Qwen3.5-4B">model card</a> names two recommended decode settings:</p>
+<ul>
+<li>Precise: temp = 0.6, top-p = 0.95, top-k = 20, presence penalty = 0.0</li>
+<li>General: temp = 1.0, top-p = 0.95, top-k = 20, presence penalty = 1.5</li>
+</ul>
+<p>In addition, we can also record a "general without presence penalty" baseline to understand how much presence penalty by itself helps.</p>
+<h3 id="temperature-sweep">Temperature sweep</h3>
+<p>The SSD paper claims an effect going beyond simple temperature tuning, so it's clear we need to sweep temperature as well.</p>
+<h3 id="min-p-sweep">min-p sweep</h3>
+<p>When I read the SSD paper, one obvious thing that came to my mind was: sharpening locks while keeping meaningful diversity at heads is exactly what min-p is supposed to do. Since it looks at the probability of the top token as an anchor, it can very effectively cut out the so-called distractor tail at locks, while keeping a healthy nucleus at forks. So let's add a min-p sweep for good measure, keeping the temperature at 1.0.</p>
+<h2 id="results">Results</h2>
+<p>Across all these baselines, and in future instalments, I kept the maximum sequence length at 48k. Here are the main results:</p>
+<p><img src="../v1p1_eval_baseline_compact.svg" alt="" /></p>
+<p>(Note: for ease of reading, I did not include think-close rate, which is very similar to the extracted answer rate, nor length-stop rate, which is more or less the inverse of the extracted answer rate).</p>
+<p>A couple thoughts:</p>
+<ul>
+<li>The general baseline performs better than the precise baseline; therefore this is what we will be comparing against going forward.</li>
+<li>The presence penalty appears to make a material difference by preventing the model from falling into thinking loops.</li>
+<li>The min-p sweep did not reveal a setting that would improve over simple T = 1.0. It might work better if we increased both T and min-p, but this avenue remains open for now.</li>
+</ul>
+<h2 id="conclusion">Conclusion</h2>
+<p>We now have some ideas of how the base model behaves on our validation set, and the target to beat is the general baseline with no presence penalty at around 50% accuracy on the harder 300-row subset. In the next post, we are going to look at the training recipe.</p>
+
+        </article>
+        <nav class="post-navigation">
+            <header class="post-navigation-title">
+                <h2>Read More Posts</h2>
+                <hr>
+            </header>
+            <div class="post-navigation-buttons">
+                <a rel="next" href="https://flf.dev/20260615-ssd-recipe/" aria-label="Next article" aria-describedby="next-title">
+                    &lt;&nbsp;[<span id="next-title">Self-distillation on math: training recipe</span>]
+                </a>
+                <span aria-hidden="true" role="separator">::</span>
+                <a rel="prev" href="https://flf.dev/20260605-ssd-data/" aria-label="Prev article" aria-describedby="prev-title">
+                    [<span id="prev-title">Self-distillation on math: data</span>]&nbsp;&gt;
+                </a>
+            </div>
+        </nav>
+    </main>
+    <footer class="footer">
+        <p class="copyright">
+            <span>© <time>2026</time> FLF</span>
+        </p>
+    </footer>
+</body>
+
+</html>

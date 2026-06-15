@@ -1,0 +1,30 @@
+# The URL the site will be built for
+base_url = "https://flf.dev"
+title = "FLF.dev"
+
+# Whether to automatically compile all Sass files in the sass directory
+compile_sass = true
+
+# Whether to build a search index to be used later on by a JavaScript library
+build_search_index = false
+
+theme = "terminus"
+
+[markdown]
+
+[markdown.highlighting]
+theme = "catppuccin-mocha"
+
+[extra]
+# Put all your custom variables here
+color_scheme = "oled-abyss"
+
+katex = true
+
+copyright = "© $YEAR FLF"
+
+main_menu = [
+    { name = "Home", url = "", trailing_slash = true },
+    { name = "Archive", url = "archive", trailing_slash = true },
+    { name = "About", url = "about", trailing_slash = true },
+]

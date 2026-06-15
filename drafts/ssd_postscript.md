@@ -1,0 +1,7 @@
+- What I would do differently
+  - Evals
+    - janky and underpowered design of the validation set
+  - Aim for a stable setup first, then optimize it for cost
+    - H100 vs B200; two issues that would have been solved:
+      - text-only vs multimodal wrapper
+      - fully memory optimized BF16 with no FP32 master weights

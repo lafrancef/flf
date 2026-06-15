@@ -1,0 +1,6 @@
+- What did we learn
+- We concluded we couldn't find an effect; that does not tell us the effect is not there
+- maybe SSD does not work for the math domain and my hypothesis was false
+- maybe something was broken in the experiments (e.g. didn't train enough, too many length stops, prompt tuning to prevent thinking loops)
+- maybe the effect is there, but we could not measure it properly
+- Future work: try at different model scales, with more budget (higher power evals, more evals)
