@@ -1,0 +1,31 @@
+@font-face {
+    font-family: 'Latin Modern Sans';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/fonts/lmsans10-regular.otf') format('opentype');
+}
+
+@font-face {
+    font-family: 'Latin Modern Sans';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('/fonts/lmsans10-bold.otf') format('opentype');
+}
+
+@font-face {
+    font-family: 'Latin Modern Sans';
+    font-style: italic;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/fonts/lmsans10-oblique.otf') format('opentype');
+}
+
+@font-face {
+    font-family: 'Latin Modern Sans';
+    font-style: italic;
+    font-weight: 700;
+    font-display: swap;
+    src: url('/fonts/lmsans10-boldoblique.otf') format('opentype');
+}
