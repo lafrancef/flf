@@ -56,7 +56,7 @@ One is increasing training sequence length to match that of the eval sequence le
 
 The other thing to try is training on complete sequences only. The reasoning goes: the model already struggles with thinking loops, and a dataset which contains many truncated responses (i.e. likely thinking loops) will reinforce this behavior. The problem is that by doing this filtering, you introduce a small but real bias towards correctness, since all truncated responses are incorrect. As an extreme example, when I started out the project and tried at small scales, in one particular eval I found that at 16k eval sequence length, the model would either produce a correct answer, or not produce any answer at all. Filtering that set for truncation would have simply given a set of correct answers. It was a bit of a judgement call, but I decided to apply the filtering anyway, as it also helped a lot with keeping the health metrics closer to the baseline.
 
-## Results
+## Results and discussion
 
 Overall, I ended up with the following recipe to run sweeps:
 
@@ -68,4 +68,20 @@ The SSD paper claims an effect at a variety of T_train / T_eval combinations. I 
 
 ![](../ssd_sweeps.svg)
 
-In terms of raw performance, it appears that SSD makes a difference at higher eval temperatures, but only has a modest, if present at all, lift over naive temperature tuning. This is despite having a much lower extracted answer rate. Therefore, we cannot claim yet that SSD "works" in the way the original authors claim that it works: by reshaping the output of the model to sharpen locks while preserving meaningful forks. These results could be just as well explained as training naively reinforcing the model's existing behavior of either producing an answer or going into a thinking loop. To confirm or invalidate this claim, we'll compare actual model outputs in the next post.
+In terms of raw performance, it appears that SSD makes a difference at higher eval temperatures, but only has a modest, if present at all, lift over naive temperature tuning: the best performing trained model, `T_train = 1.1; top-k = 20, top-p: 0.95`, when evaluated at `T_eval = 0.7`, decisively wins against the general baseline with no length penalty (`T = 1.0`) but the overall diff loses significance when comparing against a baseline at the matched `T = 0.7`.
+
+| Model | 1k-budget accuracy | 300-budget accuracy | SSD improvement|
+|---|---:|---:|---:|
+| Base T_eval=0.7 | 64.00% [60.98, 66.92] | 51.51% [45.86, 57.11] | 1k: +1.90 pp[-0.20, +4.10]; 300: +3.01 pp [-1.00, +7.36] |
+| SSD T_eval=0.7 | 65.90% [62.91, 68.77] | 54.33% [48.68, 59.88] | - |
+| Base T_eval=1.0 | 63.50% [60.47, 66.43] | 50.17% [44.53, 55.80] | 1k: +2.40 pp[+0.30, +4.50]; 300: +4.35 pp [+0.33, +8.36] |
+
+In other words, directionally good, but not a slam dunk. One encouraging sign from these results though is that they seem to agree with the SSD authors on one point: that more difficult problems benefit more (recall that the 300-row set contains generally harder problems than the 1k-row set). Looking at pass@4 on that set specifically does not give us additional information though:
+
+| Model | 300-budget pass@4, 95% CI | E08C delta, 95% CI |
+|---|---:|---:|
+| Base T_eval=0.7 | 191/300 = 63.67% [58.00, 69.00] | -0.67 pp [-3.33, +2.00] |
+| E08C repeat T_eval=0.7 | 189/300 = 63.00% [57.33, 68.33] | - |
+| Base T_eval=1.0 | 176/300 = 58.67% [53.00, 64.33] | +4.33 pp [+1.33, +7.33] |
+
+Based on this, we cannot claim that SSD works in the sense that the authors mean, i.e. by sharpening locks while preserving forks. To confirm or invalidate this effect, we'll compare actual model outputs in the next post. 
