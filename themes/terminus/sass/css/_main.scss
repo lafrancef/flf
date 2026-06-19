@@ -237,7 +237,7 @@ ol {
     border: 1px solid var(--code-border);
     padding: 1px 6px;
     margin: 0 2px;
-    font-size: calc(var(--font-size) * 0.95);
+    font-size: calc(var(--font-size) * 0.88);
 }
 
 code {
@@ -267,7 +267,7 @@ pre {
     background: color-mix(in srgb, var(--text-color) 5%, transparent);
     color: var(--text-color);
     padding: 10px;
-    font-size: calc(var(--font-size) * 0.95) !important;
+    font-size: calc(var(--font-size) * 0.88) !important;
     overflow: auto;
     border-radius: var(--radius);
     border: 1px solid color-mix(in srgb, var(--text-color) 10%, transparent);

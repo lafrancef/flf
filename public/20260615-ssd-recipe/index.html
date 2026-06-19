@@ -10,7 +10,7 @@
 
     <link rel="preload" href="https://flf.dev/fonts/lmsans10-regular.otf" as="font" type="font/otf" crossorigin="anonymous">
     <link rel="preload" href="https://flf.dev/fonts/lmsans10-bold.otf" as="font" type="font/otf" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://flf.dev/css/style.css?h=000a72744264ab5c34d6">
+    <link rel="stylesheet" href="https://flf.dev/css/style.css?h=83d18a265281433414ec">
     <script src="https://flf.dev/js/auto-close-popover-on-resize.js?h=4ef87d6fc7b98b22e044" defer></script>
     <script src="https://flf.dev/js/copy-code-to-clipboard.js?h=6eec6d5a29e934c1de32" defer></script>
     <link rel="stylesheet" href="https://flf.dev/css/katex.min.css?h=4f5ceb5bd43fff5d4658">
@@ -28,7 +28,7 @@
     <meta property="og:url" content="https://flf.dev/20260615-ssd-recipe/">
     <meta property="og:description" content="Finding a training recipe to escape the self-distillation noise trap.">
     <meta property="og:site_name" content="FLF.dev">
-    <meta property="og:updated_time" content="2026-06-16T00:08:41.726278+02:00">
+    <meta property="og:updated_time" content="2026-06-19T10:30:24.960199+02:00">
     <meta property="article:published_time" content="2026-06-15T00:00:00+00:00">
     <meta name="twitter:label2" content="Reading time">
     <meta name="twitter:data2" content="8 min">
@@ -91,7 +91,7 @@ $$</p>
 <p>Increasing the signal in the data while keeping the no-verification aspect is hard. There's a couple things to try.</p>
 <p>One is increasing training sequence length to match that of the eval sequence length (from 32k to 48k). In principle, this should be better than increasing the batch size, as it helps the model learn a distribution that's more accurate to what it will be evaluated on. However, like the increase in batch size, it had no effect.</p>
 <p>The other thing to try is training on complete sequences only. The reasoning goes: the model already struggles with thinking loops, and a dataset which contains many truncated responses (i.e. likely thinking loops) will reinforce this behavior. The problem is that by doing this filtering, you introduce a small but real bias towards correctness, since all truncated responses are incorrect. As an extreme example, when I started out the project and tried at small scales, in one particular eval I found that at 16k eval sequence length, the model would either produce a correct answer, or not produce any answer at all. Filtering that set for truncation would have simply given a set of correct answers. It was a bit of a judgement call, but I decided to apply the filtering anyway, as it also helped a lot with keeping the health metrics closer to the baseline.</p>
-<h2 id="results">Results</h2>
+<h2 id="results-and-discussion">Results and discussion</h2>
 <p>Overall, I ended up with the following recipe to run sweeps:</p>
 <ul>
 <li>Training data of length 32k, 4k initial sample budget, filtered down to non-truncated sequences, one epoch. Sampling parameters, unless overridden in sweeps: temperature 1.1, top-k 20, top p 0.95.</li>
@@ -100,7 +100,19 @@ $$</p>
 </ul>
 <p>The SSD paper claims an effect at a variety of T_train / T_eval combinations. I ran my own sweep starting from three trained models: default settings as described above, increasing T_train = 1.3, and alternatively reducing top-k to 5. These are the results:</p>
 <p><img src="../ssd_sweeps.svg" alt="" /></p>
-<p>In terms of raw performance, it appears that SSD makes a difference at higher eval temperatures, but only has a modest, if present at all, lift over naive temperature tuning. This is despite having a much lower extracted answer rate. Therefore, we cannot claim yet that SSD "works" in the way the original authors claim that it works: by reshaping the output of the model to sharpen locks while preserving meaningful forks. These results could be just as well explained as training naively reinforcing the model's existing behavior of either producing an answer or going into a thinking loop. To make or invalidate this claim, we'll compare actual model outputs in the next post.</p>
+<p>In terms of raw performance, it appears that SSD makes a difference at higher eval temperatures, but only has a modest, if present at all, lift over naive temperature tuning: the best performing trained model, <code>T_train = 1.1; top-k = 20, top-p: 0.95</code>, when evaluated at <code>T_eval = 0.7</code>, decisively wins against the general baseline with no length penalty (<code>T = 1.0</code>) but the overall diff loses significance when comparing against a baseline at the matched <code>T = 0.7</code>.</p>
+<table><thead><tr><th>Model</th><th style="text-align: right">1k-budget accuracy</th><th style="text-align: right">300-budget accuracy</th><th style="text-align: right">SSD improvement</th></tr></thead><tbody>
+<tr><td>Base T_eval=0.7</td><td style="text-align: right">64.00% [60.98, 66.92]</td><td style="text-align: right">51.51% [45.86, 57.11]</td><td style="text-align: right">1k: +1.90 pp[-0.20, +4.10]; 300: +3.01 pp [-1.00, +7.36]</td></tr>
+<tr><td>SSD T_eval=0.7</td><td style="text-align: right">65.90% [62.91, 68.77]</td><td style="text-align: right">54.33% [48.68, 59.88]</td><td style="text-align: right">-</td></tr>
+<tr><td>Base T_eval=1.0</td><td style="text-align: right">63.50% [60.47, 66.43]</td><td style="text-align: right">50.17% [44.53, 55.80]</td><td style="text-align: right">1k: +2.40 pp[+0.30, +4.50]; 300: +4.35 pp [+0.33, +8.36]</td></tr>
+</tbody></table>
+<p>In other words, directionally good, but not a slam dunk. One encouraging sign from these results though is that they seem to agree with the SSD authors on one point: that more difficult problems benefit more (recall that the 300-row set contains generally harder problems than the 1k-row set). Looking at pass@4 on that set specifically does not give us additional information though:</p>
+<table><thead><tr><th>Model</th><th style="text-align: right">300-budget pass@4, 95% CI</th><th style="text-align: right">E08C delta, 95% CI</th></tr></thead><tbody>
+<tr><td>Base T_eval=0.7</td><td style="text-align: right">191/300 = 63.67% [58.00, 69.00]</td><td style="text-align: right">-0.67 pp [-3.33, +2.00]</td></tr>
+<tr><td>E08C repeat T_eval=0.7</td><td style="text-align: right">189/300 = 63.00% [57.33, 68.33]</td><td style="text-align: right">-</td></tr>
+<tr><td>Base T_eval=1.0</td><td style="text-align: right">176/300 = 58.67% [53.00, 64.33]</td><td style="text-align: right">+4.33 pp [+1.33, +7.33]</td></tr>
+</tbody></table>
+<p>Based on this, we cannot claim that SSD works in the sense that the authors mean, i.e. by sharpening locks while preserving forks. To confirm or invalidate this effect, we'll compare actual model outputs in the next post.</p>
 
         </article>
         <nav class="post-navigation">
