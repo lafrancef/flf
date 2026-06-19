@@ -5,3 +5,6 @@
     - H100 vs B200; two issues that would have been solved:
       - text-only vs multimodal wrapper
       - fully memory optimized BF16 with no FP32 master weights
+  - Server design: somewhat useful, but no need to block more experiments on that.
+- Always check and validate the data ideally manually
+- Bias towards running experiments, fix the infra mid-flight
