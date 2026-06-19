@@ -8,3 +8,4 @@
   - Server design: somewhat useful, but no need to block more experiments on that.
 - Always check and validate the data ideally manually
 - Bias towards running experiments, fix the infra mid-flight
+- One interesting aspect: sampling (either training data or evals) accounted for >80% of GPU time.
