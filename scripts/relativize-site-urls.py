@@ -16,6 +16,10 @@ HTML_URL_ATTR_RE = re.compile(
 CSS_URL_RE = re.compile(
     r"url\((?P<quote>[\"']?)(?P<value>(?:https?://[^)\"']+|/[^)\"']*))(?P=quote)\)"
 )
+SCRIPT_TARGET_RE = re.compile(
+    r"(?P<prefix>\bconst\s+target\s*=\s*)(?P<quote>[\"'])(?P<value>[^\"']+)(?P=quote)"
+)
+META_REFRESH_URL_RE = re.compile(r"(?P<prefix>\burl=)(?P<value>https?://[^\s\"'>]+)")
 
 
 def parse_args() -> argparse.Namespace:
@@ -104,6 +108,17 @@ def rewrite_html(path: Path, output_dir: Path, base_url: str) -> None:
         return f"{match.group('prefix')}{match.group('quote')}{value}{match.group('quote')}"
 
     rewritten = HTML_URL_ATTR_RE.sub(replace, original)
+
+    def replace_script_target(match: re.Match[str]) -> str:
+        value = relative_site_url(match.group("value"), path, output_dir, base_url)
+        return f"{match.group('prefix')}{match.group('quote')}{value}{match.group('quote')}"
+
+    def replace_meta_refresh_url(match: re.Match[str]) -> str:
+        value = relative_site_url(match.group("value"), path, output_dir, base_url)
+        return f"{match.group('prefix')}{value}"
+
+    rewritten = SCRIPT_TARGET_RE.sub(replace_script_target, rewritten)
+    rewritten = META_REFRESH_URL_RE.sub(replace_meta_refresh_url, rewritten)
     if rewritten != original:
         path.write_text(rewritten)
 
