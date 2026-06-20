@@ -5,7 +5,7 @@
 <style>
   text { font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; }
 </style>
-<text x="36.0" y="34.0" font-size="20" font-weight="700" fill="#0f172a" text-anchor="start">V1.1 Eval Statistics: Baseline Sweeps and Decode Highlights</text>
+<text x="36.0" y="34.0" font-size="20" font-weight="700" fill="#0f172a" text-anchor="start">SSD Baseline Sweeps</text>
 <text x="36.0" y="58.0" font-size="12" font-weight="400" fill="#64748b" text-anchor="start">Points show rates with 95% CIs. Accuracy is split by eval budget; highlighted markers identify the precise/general decode baselines.</text>
 <circle cx="70.0" cy="80.0" r="4.4" fill="#2563eb"/>
 <text x="82.0" y="84.0" font-size="11" font-weight="600" fill="#0f172a" text-anchor="start">Base sweep</text>
