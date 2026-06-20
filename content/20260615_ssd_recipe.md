@@ -22,7 +22,7 @@ In order to understand the trap, we can look at it from a few different angles: 
 
 ### Mechanical interpretation: weight changes
 
-We can examine the proportion of changed weights at every optimizer step, as well as the distribution of the magnitude of changes. This depends on the learning rate, but it allows us to get a rough idea of what happens inside the model. It's hard to interpret these numbers without comparing against e.g. a standard training run, but I found that in my experiments, typically the amount of changed weights around peak LR was below 10%. When using a constant LR, this proportion would drop during training until reaching a plateau around 5% (depending on the exact paramters used) after a relatively small amount of training steps: the interpretation is that this is the noise floor. Similarly, sweeping over LR produces more weight changes, but does not meaningfully change final model performance.
+We can examine the proportion of changed weights at every optimizer step, as well as the distribution of the magnitude of changes. This depends on the learning rate, but it allows us to get a rough idea of what happens inside the model. It's hard to interpret these numbers without comparing against e.g. a standard training run, but I found that in my experiments, typically the amount of changed weights around peak LR was below 10%. When using a constant LR, this proportion would drop during training until reaching a plateau around 5% (depending on the exact parameters used) after a relatively small amount of training steps: the interpretation is that this is the noise floor. Similarly, sweeping over LR produces more weight changes, but does not meaningfully change final model performance.
 
 ### Training dynamics interpretation: gradient signal
 
@@ -50,7 +50,7 @@ In our training regime, increasing LR will not really help, as we'll just end up
 
 ### Data tuning
 
-Increasing the signal in the data while keeping the no-verification aspect is hard. There's a couple things to try.
+Increasing the signal in the data while keeping the no-verification aspect is hard. There are a couple of things to try.
 
 One is increasing training sequence length to match that of the eval sequence length (from 32k to 48k). In principle, this should be better than increasing the batch size, as it helps the model learn a distribution that's more accurate to what it will be evaluated on. However, like the increase in batch size, it had no effect.
 
@@ -60,7 +60,7 @@ The other thing to try is training on complete sequences only. The reasoning goe
 
 Overall, I ended up with the following recipe to run sweeps:
 
-  - Training data of length 32k, 4k initial sample budget, filtered down to non-truncated sequences, one epoch. Sampling parameters, unless overridden in sweeps: temperature 1.1, top-k 20, top p 0.95.
+  - Training data of length 32k, 4k initial sample budget, filtered down to non-truncated sequences, one epoch. Sampling parameters, unless overridden in sweeps: temperature 1.1, top-k 20, top-p 0.95.
   - Same optimizer hparams as the SSD paper: peak LR 5e-6 decaying to 1e-6, beta1 = 0.999, beta2 = 0.95, weight decay 0.1
   - LR schedule deviating slightly from SSD paper: 5 warmup steps, which came out to about 5% of training steps, whereas they warmed up for about 15% of training steps.
 
@@ -68,7 +68,7 @@ The SSD paper claims an effect at a variety of T_train / T_eval combinations. I 
 
 ![](../ssd_sweeps.svg)
 
-In terms of raw performance, it appears that SSD makes a difference at higher eval temperatures, but only has a modest, if present at all, lift over naive temperature tuning: the best performing trained model, `T_train = 1.1; top-k = 20, top-p: 0.95`, when evaluated at `T_eval = 0.7`, decisively wins against the general baseline with no length penalty (`T = 1.0`) but the overall diff loses significance when comparing against a baseline at the matched `T = 0.7`.
+In terms of raw performance, it appears that SSD makes a difference at higher eval temperatures, but only has a modest, if present at all, lift over naive temperature tuning: the best performing trained model, `T_train = 1.1; top-k = 20, top-p = 0.95`, when evaluated at `T_eval = 0.7`, decisively wins against the general baseline with no length penalty (`T = 1.0`) but the overall diff loses significance when comparing against a baseline at the matched `T = 0.7`.
 
 | Model | 1k-budget accuracy | 300-budget accuracy | SSD improvement|
 |---|---:|---:|---:|
@@ -84,4 +84,4 @@ In other words, directionally good, but not a slam dunk. One encouraging sign fr
 | E08C repeat T_eval=0.7 | 189/300 = 63.00% [57.33, 68.33] | - |
 | Base T_eval=1.0 | 176/300 = 58.67% [53.00, 64.33] | +4.33 pp [+1.33, +7.33] |
 
-Based on this, we cannot claim that SSD works in the sense that the authors mean, i.e. by sharpening locks while preserving forks. To confirm or invalidate this effect, we'll compare actual model outputs in the next post. 
+Based on this, we cannot claim that SSD works in the sense that the authors mean, i.e. by sharpening locks while preserving forks. To confirm or invalidate this effect, we'll compare actual model outputs in the next post.
